@@ -23,6 +23,7 @@ int validate_math(std::string &s)
     int brCnt{0};
     int hasOperand{0};
     int hasDigit{0};
+    int j;
     for (int i = 0; i < s.length(); i++)
     {
         if (s[i] == '(')
@@ -42,8 +43,22 @@ int validate_math(std::string &s)
                 return -1;
         }
 
-        if (s[i] == 's' && s[i + 1] != 'i')
-            return -1;
+        if (isalpha(s[i]))
+        {
+            j = i;
+            while (isalpha(s[j]))
+                j++;
+
+            std::string sub = s.substr(i, j - i);
+
+            if (!((sub.compare("sin") == 0) ||
+                  (sub.compare("cos") == 0) ||
+                  (sub.compare("tan") == 0) ||
+                  (sub.compare("cot") == 0)))
+                return -1;
+
+            i = j - 1;
+        }
 
         if (brCnt < 0)
             break;
@@ -64,7 +79,7 @@ int validate_math(std::string &s)
 double do_add(std::string &s)
 {
     int pos, lpos;
-    std::string l,r;
+    std::string l, r;
     std::cout << "Do add:\t\t" << s << '\n';
     if (s.length() == 0)
         return 0.0;
@@ -75,7 +90,7 @@ double do_add(std::string &s)
         return std::stod(s);
 
     l = s.substr(0, pos);
-    r = s.substr(pos+1, s.length() - pos -1);
+    r = s.substr(pos + 1, s.length() - pos - 1);
 
     if (s.at(pos) == '-')
         return do_add(l) - do_add(r);
@@ -88,6 +103,28 @@ double do_sin(std::string &s, int pos)
     int brCnt, i, lpos;
     double r;
     std::cout << "Do sin:\t\t" << s << '\n';
+    enum
+    {
+        SIN,
+        COS,
+        TAN,
+        COT
+    } type;
+
+    if (s.compare(pos, 3, "sin") == 0)
+        type = SIN;
+    else if (s.compare(pos, 3, "cos") == 0)
+        type = COS;
+    else if (s.compare(pos, 3, "tan") == 0)
+        type = TAN;
+    else if (s.compare(pos, 3, "cot") == 0)
+        type = COT;
+    else
+    {
+        std::cout << "Unknow type\n";
+        return 0.0;
+    }
+
     if (s.at(pos + 3) == '(') // have brace right after sin
     {
         brCnt = 1;
@@ -102,7 +139,10 @@ double do_sin(std::string &s, int pos)
         }
         std::string sub = s.substr(pos + 4, i - pos - 5);
         r = do_brace(sub);
-        s.replace(pos, i - pos, std::to_string(sin(r)));
+        r = (type == SIN) ? sin(r) : (type == COS) ? cos(r)
+                                 : (type == TAN)   ? tan(r)
+                                                   : 1.0 / tan(r);
+        s.replace(pos, i - pos, std::to_string((r)));
         return do_no_brace(s);
     }
     else
@@ -111,12 +151,19 @@ double do_sin(std::string &s, int pos)
         if (lpos == s.npos) // sin1 alone
         {
             r = std::stod(s.substr(pos + 3, s.length() - pos - 3));
-            s.replace(pos, s.length() - pos, std::to_string(sin(r)));
+
+            r = (type == SIN) ? sin(r) : (type == COS) ? cos(r)
+                                     : (type == TAN)   ? tan(r)
+                                                       : 1.0 / tan(r);
+            s.replace(pos, s.length() - pos, std::to_string((r)));
         }
         else // sin1+-something
         {
             r = std::stod(s.substr(pos + 3, lpos - pos - 3));
-            s.replace(pos, lpos - pos, std::to_string(sin(r)));
+            r = (type == SIN) ? sin(r) : (type == COS) ? cos(r)
+                                     : (type == TAN)   ? tan(r)
+                                                       : 1.0 / tan(r);
+            s.replace(pos, lpos - pos, std::to_string((r)));
         }
         return do_no_brace(s);
     }
@@ -131,7 +178,7 @@ double do_no_brace(std::string &s)
     if (s.length() == 0)
         return 0.0;
 
-    pos = s.find_first_of('s');
+    pos = s.find_first_of("sct");
     if (pos != s.npos) // have sin1
         return do_sin(s, pos);
 
@@ -185,11 +232,11 @@ double do_brace(std::string &s)
 
     brCnt = 1;
     lpos = pos + 1;
-    while (brCnt > 0)//find close bracket for the pair
+    while (brCnt > 0) // find close bracket for the pair
     {
         if (s.at(lpos) == '(')
             brCnt++;
-        
+
         if (s.at(lpos) == ')')
             brCnt--;
         lpos++;
